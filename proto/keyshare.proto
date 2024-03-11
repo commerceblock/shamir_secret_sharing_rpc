@@ -1,0 +1,20 @@
+syntax = "proto3";
+import "google/protobuf/empty.proto";
+package keyshare;
+
+service Coordinator {
+    rpc ListKeys (google.protobuf.Empty) returns (KeyListReply);
+    rpc AddKey (AddKeyRequest) returns (AddKeyReply);
+}
+
+message AddKeyRequest {
+    string keyhex = 1;
+}
+
+message AddKeyReply {
+    string message = 1;
+}
+
+message KeyListReply {
+    repeated string items = 1;
+}
