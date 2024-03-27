@@ -9,13 +9,8 @@ use tonic::{transport::Server, Request, Response, Status};
 use key_share::coordinator_server::{Coordinator, CoordinatorServer};
 use key_share::{KeyListReply, AddKeyRequest, AddKeyReply};
 
-use shamir_secret_sharing::num_bigint::BigInt;
-use shamir_secret_sharing::ShamirSecretSharing as SSS;
-
 const SHAMIR_SHARES: usize = 3;
 const SHAMIR_THRESHOLD: usize = 2;
-
-const CURVE: &str = "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f";
 
 const SEED_FILE: &str = "/home/node/node.seed";
 
@@ -46,10 +41,17 @@ pub mod key_share {
     tonic::include_proto!("keyshare"); // The string specified here must match the proto package name
 }
 
+#[derive(Debug, Default, PartialEq)]
+pub struct KeyShare {
+    key_hex: String,
+    index: u32,
+}
+
 #[derive(Debug, Default)]
 pub struct MyCoordinator {
-    key_shares: Arc<Mutex<Vec<String>>>,
+    key_shares: Arc<Mutex<Vec<KeyShare>>>,
 }
+
 
 #[tonic::async_trait]
 impl Coordinator for MyCoordinator {
@@ -67,40 +69,40 @@ impl Coordinator for MyCoordinator {
             }));
         }
 
-        let key_hex = request.into_inner().keyhex;
+        let request_inner = request.into_inner();
+        let key_hex = request_inner.keyhex;
+        let index = request_inner.index;
 
-        // if key_hex is already in shares, return an error
-        if shares.contains(&key_hex) {
-            // return Err(Status::invalid_argument("Key already exists"));
+        let new_key_share = KeyShare {
+            key_hex: key_hex.clone(),
+            index,
+        };
+
+        // Check for duplicates
+        if shares.iter().any(|ks| ks.key_hex == new_key_share.key_hex || ks.index == new_key_share.index) {
             return Ok(Response::new(key_share::AddKeyReply {
                 message: "Key already exists.".to_string(), // We must use .into_inner() as the fields of gRPC requests and responses are private
             }));
+        } else {
+            shares.push(new_key_share); // Insert the new KeyShare if no duplicates are found
         }
-
-        // if key_hex is not in shares, add it
-
-        shares.push(key_hex);
 
         let mut message = "Key added successfully".to_string();
 
+        let mut secret_shares: Vec<Vec<u8>> = Vec::new();
+        let mut indexes: Vec<usize> = Vec::new();
+
         if shares.len() >= SHAMIR_THRESHOLD {
 
-            let sss = SSS {
-                threshold: SHAMIR_THRESHOLD,
-                share_amount: SHAMIR_SHARES,
-                prime: BigInt::parse_bytes(CURVE.as_bytes(), 16).unwrap()
-            };
-
-            let mut shamir_shares: Vec<(usize, BigInt)> = Vec::new();
-
             for share in shares.iter() {
-                let secret = BigInt::parse_bytes(share.as_bytes(), 16).unwrap();
-                shamir_shares.push((shares.iter().position(|x| x == share).unwrap() + 1, secret));
+                let ks = hex::decode(share.key_hex.to_string()).unwrap();
+                secret_shares.push(ks);
+                indexes.push(share.index as usize);
             }
 
-            let recovered_secret = sss.recover(&shamir_shares);
+            let secret = bc_shamir::recover_secret(&indexes, &secret_shares).unwrap();
 
-            let seed_content = recovered_secret.to_str_radix(16);
+            let seed_content =  hex::encode(secret);
 
             let written = write_file_if_not_exists(SEED_FILE, &seed_content);
 
@@ -111,6 +113,7 @@ impl Coordinator for MyCoordinator {
             } else {
                 " Seed file already exists."
             });
+
         }
 
         let reply = key_share::AddKeyReply {
@@ -129,7 +132,7 @@ impl Coordinator for MyCoordinator {
         let shares = self.key_shares.lock().await;
 
         for key_share in &shares[..] {
-            message.items.push(key_share.to_string());
+            message.items.push(key_share.key_hex.to_string());
         }
 
         Ok(Response::new(message))

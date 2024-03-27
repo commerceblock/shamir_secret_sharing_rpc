@@ -9,6 +9,7 @@ service Coordinator {
 
 message AddKeyRequest {
     string keyhex = 1;
+    uint32 index = 2;
 }
 
 message AddKeyReply {
