@@ -8,6 +8,8 @@
 
 The command is `cargo run --bin keyshare-client add-key-share <key_share_hex> <index>`.
 
+`cargo run --bin keyshare-client add-mnemonic "fork clerk hover mystery replace crucial industry deliver rule into broom brave derive slam limit market alarm weird worth reform idle indoor ozone must" 0`  to add a mnemonic.
+
 # Running from Dockerfile
 
 `$ docker build -t keyshare .` to build the image.

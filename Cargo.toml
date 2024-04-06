@@ -23,7 +23,6 @@ tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 secp256k1 = { version = "0.28.2", features = ["rand-std"] }
 hex = "0.4.3"
 shamir_secret_sharing = "0.1.1"
-
 bc-rand = "0.1"
 bc-shamir = "0.3.1"
 bip39 = "2.0.0"

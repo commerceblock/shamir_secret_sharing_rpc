@@ -4,11 +4,12 @@ use std::io::Write;
 use std::path::Path;
 use std::sync::Arc;
 
+use bip39::Mnemonic;
 use tokio::sync::Mutex;
 use tonic::{transport::Server, Request, Response, Status};
 
 use key_share::coordinator_server::{Coordinator, CoordinatorServer};
-use key_share::{KeyListReply, AddKeyRequest, AddKeyReply};
+use key_share::{AddKeyReply, AddKeyRequest, AddMnemonicReply, AddMnemonicRequest, KeyListReply};
 
 const SHAMIR_SHARES: usize = 3;
 const SHAMIR_THRESHOLD: usize = 2;
@@ -52,36 +53,20 @@ pub struct MyCoordinator {
 }
 
 
-#[tonic::async_trait]
-impl Coordinator for MyCoordinator {
+impl MyCoordinator {
 
-    async fn add_key(
-        &self,
-        request: Request<AddKeyRequest>,
-    ) -> Result<Response<AddKeyReply>, Status> {
-
+    async fn add_share(&self, key_hex: String, index: u32) -> Result<String, Status> {
         let mut shares = self.key_shares.lock().await;
 
         if shares.len() >= SHAMIR_SHARES {
-            return Ok(Response::new(key_share::AddKeyReply {
-                message: "Enough key shares have already been added.".to_string(), // We must use .into_inner() as the fields of gRPC requests and responses are private
-            }));
+            return Ok("Enough key shares have already been added.".to_string());
         }
 
-        let request_inner = request.into_inner();
-        let key_hex = request_inner.keyhex;
-        let index = request_inner.index;
-
-        let new_key_share = KeyShare {
-            key_hex: key_hex.clone(),
-            index,
-        };
+        let new_key_share = KeyShare { key_hex, index };
 
         // Check for duplicates
         if shares.iter().any(|ks| ks.key_hex == new_key_share.key_hex || ks.index == new_key_share.index) {
-            return Ok(Response::new(key_share::AddKeyReply {
-                message: "Key already exists.".to_string(), // We must use .into_inner() as the fields of gRPC requests and responses are private
-            }));
+            return Ok("Key already exists.".to_string());
         } else {
             shares.push(new_key_share); // Insert the new KeyShare if no duplicates are found
         }
@@ -116,16 +101,44 @@ impl Coordinator for MyCoordinator {
             } else {
                 " Seed file already exists."
             });
-
         }
 
-        let reply = key_share::AddKeyReply {
-            message
-        };
+        Ok(message)
+    }
 
-        // return the reply
+}
 
-        Ok(Response::new(reply))
+#[tonic::async_trait]
+impl Coordinator for MyCoordinator {
+
+    async fn add_key(
+        &self,
+        request: Request<AddKeyRequest>,
+    ) -> Result<Response<AddKeyReply>, Status> {
+
+        let request_inner = request.into_inner();
+        let key_hex = request_inner.keyhex;
+        let index = request_inner.index;
+
+        let message = self.add_share(key_hex, index).await?;
+
+        Ok(Response::new(AddKeyReply { message }))
+    }
+
+    async fn add_mnemonic(
+        &self,
+        request: Request<AddMnemonicRequest>,
+    ) -> Result<Response<AddMnemonicReply>, Status> {
+
+        let request_inner = request.into_inner();
+        let mnemonic_str = request_inner.mnemonic;
+        let index = request_inner.index;
+        let mnemonic = Mnemonic::parse(&mnemonic_str).unwrap();
+        let key_hex = hex::encode(mnemonic.to_entropy());
+
+        let message = self.add_share(key_hex, index).await?;
+
+        Ok(Response::new(AddMnemonicReply { message }))
     }
 
     async fn list_keys(&self, _request: Request<()>) -> Result<Response<KeyListReply>, Status> {
