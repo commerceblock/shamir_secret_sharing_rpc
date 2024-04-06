@@ -1,10 +1,11 @@
-use std::env;
+use std::{env, fs};
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::Path;
 use std::sync::Arc;
 
 use bip39::Mnemonic;
+use hex::FromHex;
 use tokio::sync::Mutex;
 use tonic::{transport::Server, Request, Response, Status};
 
@@ -88,9 +89,7 @@ impl MyCoordinator {
 
             let seed_content =  hex::encode(secret);
 
-            let seed_path = env::var("SEED_PATH").unwrap_or_else(|_| "/home/vls/.lightning-signer/testnet".into());
-            let seed_file_name = env::var("SEED_FILE_NAME").unwrap_or_else(|_| "node.seed".into());
-            let seed_file = format!("{}/{}", seed_path, seed_file_name);
+            let seed_file = get_seed_file();
 
             let written = write_file_if_not_exists(&seed_file, &seed_content);
 
@@ -116,6 +115,11 @@ impl Coordinator for MyCoordinator {
         request: Request<AddKeyRequest>,
     ) -> Result<Response<AddKeyReply>, Status> {
 
+        if check_seed_file().unwrap() {
+            let message = "A valid seed file already exists. New keys will be ignored.".to_string();
+            return Ok(Response::new(AddKeyReply { message }));
+        }
+
         let request_inner = request.into_inner();
         let key_hex = request_inner.keyhex;
         let index = request_inner.index;
@@ -129,6 +133,11 @@ impl Coordinator for MyCoordinator {
         &self,
         request: Request<AddMnemonicRequest>,
     ) -> Result<Response<AddMnemonicReply>, Status> {
+
+        if check_seed_file().unwrap() {
+            let message = "A valid seed file already exists. New keys will be ignored.".to_string();
+            return Ok(Response::new(AddMnemonicReply { message }));
+        }
 
         let request_inner = request.into_inner();
         let mnemonic_str = request_inner.mnemonic;
@@ -156,10 +165,51 @@ impl Coordinator for MyCoordinator {
     }
 }
 
+fn get_seed_file() -> String {
+    let seed_path = env::var("SEED_PATH").unwrap_or_else(|_| "/home/vls/.lightning-signer/testnet".into());
+    let seed_file_name = env::var("SEED_FILE_NAME").unwrap_or_else(|_| "node.seed".into());
+    format!("{}/{}", seed_path, seed_file_name)
+}
+
+fn check_seed_file() -> Result<bool, Box<dyn std::error::Error>> {
+    let seed_file = get_seed_file();
+
+    // Check if the file exists
+    if !Path::new(&seed_file).exists() {
+        return Ok(false);
+    }
+
+    // Read the content of the file
+    let content = fs::read_to_string(&seed_file)?.trim().to_string();
+
+    // Attempt to decode the hex string into bytes
+    let is_valid_hex = match Vec::from_hex(&content) {
+        Ok(bytes) => bytes.len() == 32, // Check if the decoded byte array is exactly 32 bytes long
+        Err(_) => false, // If decoding fails, the hex string is not valid
+    };
+
+    if !is_valid_hex {
+        // If the file content is not a valid 32-byte hex string, delete the file
+        fs::remove_file(&seed_file)?;
+        println!("Invalid seed file deleted.");
+        return Ok(false);
+    }
+
+    Ok(true)
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+
+    if check_seed_file().unwrap() {
+        println!("A valid seed file already exists. The server will not start.");
+        return Ok(());
+    }
+
     let addr = "[::1]:50051".parse()?;
     let coordinator = MyCoordinator::default();
+
+    println!("Server started at {}", addr);
 
     Server::builder()
         .add_service(CoordinatorServer::new(coordinator))
