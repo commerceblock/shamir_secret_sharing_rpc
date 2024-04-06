@@ -10,7 +10,7 @@ The command is `cargo run --bin keyshare-client add-key-share <key_share_hex> <i
 
 # Running from Dockerfile
 
-`$ docker build --no-cache -t keyshare .` to build the image.
+`$ docker build -t keyshare .` to build the image.
 
 `docker run -d --name keyshare-server -v /home/user:/home/vls/.lightning-signer/testnet -p 50051:50051 keyshare` to run the container
 

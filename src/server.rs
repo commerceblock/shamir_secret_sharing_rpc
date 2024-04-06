@@ -1,3 +1,4 @@
+use std::env;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::Path;
@@ -11,8 +12,6 @@ use key_share::{KeyListReply, AddKeyRequest, AddKeyReply};
 
 const SHAMIR_SHARES: usize = 3;
 const SHAMIR_THRESHOLD: usize = 2;
-
-const SEED_FILE: &str = "/home/vls/.lightning-signer/testnet/node.seed";
 
 fn write_file_if_not_exists(path: &str, content: &str) -> bool {
     let path = Path::new(path);
@@ -104,7 +103,11 @@ impl Coordinator for MyCoordinator {
 
             let seed_content =  hex::encode(secret);
 
-            let written = write_file_if_not_exists(SEED_FILE, &seed_content);
+            let seed_path = env::var("SEED_PATH").unwrap_or_else(|_| "/home/vls/.lightning-signer/testnet".into());
+            let seed_file_name = env::var("SEED_FILE_NAME").unwrap_or_else(|_| "node.seed".into());
+            let seed_file = format!("{}/{}", seed_path, seed_file_name);
+
+            let written = write_file_if_not_exists(&seed_file, &seed_content);
 
             message += " and secret recovered.";
 

@@ -1,4 +1,4 @@
-# Use a newer base image that hopefully has the required GLIBC version
+# Use a base image that has the required GLIBC version
 FROM debian:bullseye-slim as builder
 
 # Install Rust, protobuf compiler, and library dependencies
@@ -34,13 +34,14 @@ RUN apt-get update && apt-get install -y protobuf-compiler libprotobuf-dev && rm
 COPY --from=builder /usr/src/sss_rpc/target/release/keyshare-server /usr/local/bin/keyshare-server
 COPY --from=builder /usr/src/sss_rpc/target/release/keyshare-client /usr/local/bin/keyshare-client
 
-# Set the environment variable for the seed file's path
-ENV SEED_FILE=/home/vls/.lightning-signer/testnet/node.seed
+# Set the environment variables for the seed file's path
+ENV SEED_PATH="/home/vls/.lightning-signer/testnet"
+ENV SEED_FILE_NAME="node.seed"
 
 # Create the directory and file for the SEED_FILE. You might want to ensure
 # the file is writable or has specific content as needed.
-RUN mkdir -p /home/vls/.lightning-signer/testnet \
-    && touch $SEED_FILE
+RUN mkdir -p $SEED_PATH \
+    && touch $SEED_PATH/$SEED_FILE_NAME
 
 # Expose the port your server listens on if necessary
 EXPOSE 50051
