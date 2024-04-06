@@ -12,7 +12,7 @@ use key_share::{KeyListReply, AddKeyRequest, AddKeyReply};
 const SHAMIR_SHARES: usize = 3;
 const SHAMIR_THRESHOLD: usize = 2;
 
-const SEED_FILE: &str = "/home/node/node.seed";
+const SEED_FILE: &str = "/home/vls/.lightning-signer/testnet/node.seed";
 
 fn write_file_if_not_exists(path: &str, content: &str) -> bool {
     let path = Path::new(path);
