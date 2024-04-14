@@ -12,7 +12,7 @@ use tokio::sync::Mutex;
 use tonic::{transport::Server, Request, Response, Status};
 
 use key_share::coordinator_server::{Coordinator, CoordinatorServer};
-use key_share::{AddKeyReply, AddKeyRequest, AddMnemonicReply, AddMnemonicRequest, KeyListReply};
+use key_share::{AddMnemonicReply, AddMnemonicRequest, KeyListReply};
 
 const SHAMIR_SHARES: usize = 3;
 const SHAMIR_THRESHOLD: usize = 2;
@@ -126,25 +126,6 @@ impl MyCoordinator {
 
 #[tonic::async_trait]
 impl Coordinator for MyCoordinator {
-
-    async fn add_key(
-        &self,
-        request: Request<AddKeyRequest>,
-    ) -> Result<Response<AddKeyReply>, Status> {
-
-        if check_seed_file().unwrap() {
-            let message = "A valid seed file already exists. New keys will be ignored.".to_string();
-            return Ok(Response::new(AddKeyReply { message }));
-        }
-
-        let request_inner = request.into_inner();
-        let key_hex = request_inner.keyhex;
-        let index = request_inner.index;
-
-        let message = self.add_share(key_hex, index).await?;
-
-        Ok(Response::new(AddKeyReply { message }))
-    }
 
     async fn add_mnemonic(
         &self,

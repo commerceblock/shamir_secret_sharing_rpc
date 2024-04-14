@@ -13,7 +13,6 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Add a key share to the Shamir Secret Sharing scheme
-    AddKeyShare { key: String, index: u32 },
     AddMnemonic { mnemonic: String, password: String, index: u32 },
 }
 
@@ -28,17 +27,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::AddKeyShare { key, index } => {
-            let request = tonic::Request::new(key_share::AddKeyRequest {
-                keyhex: key,
-                index
-            });
-
-            let response = client.add_key(request).await?;
-
-            println!("RESPONSE={:?}", response);
-        },
-
         Commands::AddMnemonic { mnemonic, password, index } => {
             let request = tonic::Request::new(key_share::AddMnemonicRequest {
                 mnemonic,

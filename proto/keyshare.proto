@@ -4,17 +4,7 @@ package keyshare;
 
 service Coordinator {
     rpc ListKeys (google.protobuf.Empty) returns (KeyListReply);
-    rpc AddKey (AddKeyRequest) returns (AddKeyReply);
     rpc AddMnemonic (AddMnemonicRequest) returns (AddMnemonicReply);
-}
-
-message AddKeyRequest {
-    string keyhex = 1;
-    uint32 index = 2;
-}
-
-message AddKeyReply {
-    string message = 1;
 }
 
 message AddMnemonicRequest {
