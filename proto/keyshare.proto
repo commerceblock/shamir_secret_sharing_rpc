@@ -19,7 +19,8 @@ message AddKeyReply {
 
 message AddMnemonicRequest {
     string mnemonic = 1;
-    uint32 index = 2;
+    string password = 2;
+    uint32 index = 3;
 }
 
 message AddMnemonicReply {

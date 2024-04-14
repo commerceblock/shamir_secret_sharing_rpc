@@ -14,7 +14,7 @@ struct Cli {
 enum Commands {
     /// Add a key share to the Shamir Secret Sharing scheme
     AddKeyShare { key: String, index: u32 },
-    AddMnemonic { mnemonic: String, index: u32 },
+    AddMnemonic { mnemonic: String, password: String, index: u32 },
 }
 
 pub mod key_share {
@@ -39,9 +39,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("RESPONSE={:?}", response);
         },
 
-        Commands::AddMnemonic { mnemonic, index } => {
+        Commands::AddMnemonic { mnemonic, password, index } => {
             let request = tonic::Request::new(key_share::AddMnemonicRequest {
                 mnemonic,
+                password,
                 index
             });
 

@@ -5,6 +5,8 @@ use std::path::Path;
 use std::sync::Arc;
 
 use bip39::Mnemonic;
+use blake2::Blake2bVar;
+use blake2::digest::{Update, VariableOutput};
 use hex::FromHex;
 use tokio::sync::Mutex;
 use tonic::{transport::Server, Request, Response, Status};
@@ -51,6 +53,21 @@ pub struct KeyShare {
 #[derive(Debug, Default)]
 pub struct MyCoordinator {
     key_shares: Arc<Mutex<Vec<KeyShare>>>,
+}
+
+fn xor_buffers(buf: &[u8; 32], mnemonic: &Vec<u8>) -> Result<Vec<u8>, String> {
+    // Check if the size of the mnemonic is exactly 32 bytes
+    if mnemonic.len() != 32 {
+        return Err("mnemonic must be exactly 32 bytes".to_string());
+    }
+
+    // Perform XOR operation between the elements of the array and the vector
+    let result = buf.iter()
+                    .zip(mnemonic.iter())
+                    .map(|(&x, &y)| x ^ y)
+                    .collect::<Vec<u8>>();
+
+    Ok(result)
 }
 
 
@@ -142,8 +159,20 @@ impl Coordinator for MyCoordinator {
         let request_inner = request.into_inner();
         let mnemonic_str = request_inner.mnemonic;
         let index = request_inner.index;
+        let password = request_inner.password;
+
+        let password = password.as_bytes();
+
+        let mut hasher = Blake2bVar::new(32).unwrap();
+        hasher.update(password);
+        let mut buf = [0u8; 32];
+        hasher.finalize_variable(&mut buf).unwrap();
+
         let mnemonic = Mnemonic::parse(&mnemonic_str).unwrap();
-        let key_hex = hex::encode(mnemonic.to_entropy());
+
+        let xor_result = xor_buffers(&buf, &mnemonic.to_entropy()).unwrap();
+
+        let key_hex = hex::encode(xor_result);
 
         let message = self.add_share(key_hex, index).await?;
 

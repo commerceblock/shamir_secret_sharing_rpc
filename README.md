@@ -2,7 +2,9 @@
 
 # Running from source
 
-`cargo run --bin keyshare-server` to start the server.
+`sudo apt-get install -y protobuf-compiler libprotobuf-dev` before running.
+
+`export SEED_PATH=<folder_to_write_seed_file> && cargo run --bin keyshare-server` to start the server.
 
 `cargo run --bin keyshare-client add-key-share 5b654db9c93b6c68dcc9d0bd2eb8730da3b796207c4105df27f7da270ae627a4 0`  to add a key share.
 
@@ -12,7 +14,7 @@ The command is `cargo run --bin keyshare-client add-key-share <key_share_hex> <i
 
 # Running from Dockerfile
 
-`$ docker build -t keyshare .` to build the image.
+`docker build -t keyshare .` to build the image.
 
 `docker run -d --name keyshare-server -v /home/<user>:/home/vls/.lightning-signer/testnet -p 50051:50051 keyshare` to run the container
 
