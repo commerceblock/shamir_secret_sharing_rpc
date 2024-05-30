@@ -22,7 +22,8 @@ pub mod key_share {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut client = CoordinatorClient::connect("http://[::1]:50051").await?;
+     // let mut client = CoordinatorClient::connect("http://[::1]:50051").await?;
+     let mut client = CoordinatorClient::connect("http://127.0.0.1:50051").await?;
 
     let cli = Cli::parse();
 
