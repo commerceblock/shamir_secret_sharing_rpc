@@ -14,6 +14,6 @@ The command is `cargo run --bin keyshare-client add-key-share <mnemonic> <passwo
 
 `docker build -t keyshare .` to build the image.
 
-`docker run -d --name keyshare-server -v /home/<user>:/home/vls/.lightning-signer/testnet -p 50051:50051 keyshare` to run the container
+`docker run -d --name keyshare-server -v /home/<user>:/home/vls/.lightning-signer/bitcoin -p 50051:50051 keyshare` to run the container
 
 `docker exec keyshare-server keyshare-client add-mnemonic "fork clerk hover mystery replace crucial industry deliver rule into broom brave derive slam limit market alarm weird worth reform idle indoor ozone must" tdgjhwJ75KnA 0` to send a mnemonic.

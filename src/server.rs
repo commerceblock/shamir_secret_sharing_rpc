@@ -176,7 +176,7 @@ impl Coordinator for MyCoordinator {
 }
 
 fn get_seed_file() -> String {
-    let seed_path = env::var("SEED_PATH").unwrap_or_else(|_| "/home/vls/.lightning-signer/testnet".into());
+    let seed_path = env::var("SEED_PATH").unwrap_or_else(|_| "/home/vls/.lightning-signer/bitcoin".into());
     let seed_file_name = env::var("SEED_FILE_NAME").unwrap_or_else(|_| "node.seed".into());
     format!("{}/{}", seed_path, seed_file_name)
 }

@@ -35,7 +35,7 @@ COPY --from=builder /usr/src/sss_rpc/target/release/keyshare-server /usr/local/b
 COPY --from=builder /usr/src/sss_rpc/target/release/keyshare-client /usr/local/bin/keyshare-client
 
 # Set the environment variables for the seed file's path
-ENV SEED_PATH="/home/vls/.lightning-signer/testnet"
+ENV SEED_PATH="/home/vls/.lightning-signer/bitcoin"
 ENV SEED_FILE_NAME="node.seed"
 
 # Create the directory and file for the SEED_FILE. You might want to ensure
@@ -47,7 +47,7 @@ RUN mkdir -p $SEED_PATH \
 EXPOSE 50051
 
 # Volume to persist data and access SEED_FILE
-VOLUME ["/home/vls/.lightning-signer/testnet"]
+VOLUME ["/home/vls/.lightning-signer/bitcoin"]
 
 # Command to run the server by default when the container starts
 CMD ["keyshare-server"]
