@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use std::{env, fs};
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -5,6 +6,10 @@ use std::path::Path;
 use std::sync::Arc;
 
 use bip39::Mnemonic;
+use bitcoin::bip32::{DerivationPath, Xpriv};
+use bitcoin::key::Secp256k1;
+use bitcoin::secp256k1::ffi::types::AlignedType;
+use bitcoin::NetworkKind;
 use blake2::Blake2bVar;
 use blake2::digest::{Update, VariableOutput};
 use hex::FromHex;
@@ -13,6 +18,7 @@ use tonic::{transport::Server, Request, Response, Status};
 
 use key_share::coordinator_server::{Coordinator, CoordinatorServer};
 use key_share::{AddMnemonicReply, AddMnemonicRequest, KeyListReply};
+
 
 const SHAMIR_SHARES: usize = 3;
 const SHAMIR_THRESHOLD: usize = 2;
@@ -104,7 +110,21 @@ impl MyCoordinator {
 
             let secret = bc_shamir::recover_secret(&indexes, &secret_shares).unwrap();
 
-            let seed_content =  hex::encode(secret);
+            let network_kind = get_network_kind();
+
+            // we need secp256k1 context for key derivation
+            let mut buf: Vec<AlignedType> = Vec::new();
+            buf.resize(Secp256k1::preallocate_size(), AlignedType::zeroed());
+            let secp = Secp256k1::preallocated_new(buf.as_mut_slice()).unwrap();
+            
+            let derivation_path = env::var("DERIVATION_PATH").unwrap_or_else(|_| "m/84'/0'/0'/0/0".into());
+
+            let root = Xpriv::new_master(network_kind, &secret).unwrap();
+            let path = DerivationPath::from_str(&derivation_path).unwrap();
+            let child = root.derive_priv(&secp, &path).unwrap();
+            let secret_key = child.private_key;
+
+            let seed_content =  hex::encode(secret_key.secret_bytes());
 
             let seed_file = get_seed_file();
 
@@ -179,6 +199,17 @@ fn get_seed_file() -> String {
     let seed_path = env::var("SEED_PATH").unwrap_or_else(|_| "/home/vls/.lightning-signer/testnet".into());
     let seed_file_name = env::var("SEED_FILE_NAME").unwrap_or_else(|_| "node.seed".into());
     format!("{}/{}", seed_path, seed_file_name)
+}
+
+pub fn get_network_kind() -> bitcoin::network::NetworkKind {
+    let network = env::var("NETWORK").unwrap_or_else(|_| "bitcoin".into());
+    match network.as_str() {
+        "signet" => NetworkKind::Test,
+        "testnet" => NetworkKind::Test,
+        "regtest" => NetworkKind::Test,
+        "bitcoin" => NetworkKind::Main,
+        _ => NetworkKind::Main, // Default case to handle unexpected values
+    }
 }
 
 fn check_seed_file() -> Result<bool, Box<dyn std::error::Error>> {

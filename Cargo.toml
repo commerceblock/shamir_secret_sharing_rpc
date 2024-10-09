@@ -25,6 +25,7 @@ hex = "0.4.3"
 shamir_secret_sharing = "0.1.1"
 bc-rand = "0.1"
 bc-shamir = "0.3.1"
+bitcoin = "0.32.3"
 bip39 = "2.0.0"
 blake2 = "0.10.6"
 

@@ -4,7 +4,7 @@
 
 `sudo apt-get install -y protobuf-compiler libprotobuf-dev` before running.
 
-`export SEED_PATH=<folder_to_write_seed_file> && cargo run --bin keyshare-server` to start the server.
+`export NETWORK=<bitcoin_network> DERIVATION_PATH=<derivation_path> SEED_PATH=<folder_to_write_seed_file> && cargo run --bin keyshare-server` to start the server.
 
 `cargo run --bin keyshare-client add-mnemonic "fork clerk hover mystery replace crucial industry deliver rule into broom brave derive slam limit market alarm weird worth reform idle indoor ozone must" tdgjhwJ75KnA 0`  to add a mnemonic.
 

@@ -37,6 +37,8 @@ COPY --from=builder /usr/src/sss_rpc/target/release/keyshare-client /usr/local/b
 # Set the environment variables for the seed file's path
 ENV SEED_PATH="/home/vls/.lightning-signer/testnet"
 ENV SEED_FILE_NAME="node.seed"
+ENV NETWORK="testnet"
+ENV DERIVATION_PATH="m/84'/0'/0'/0/0"
 
 # Create the directory and file for the SEED_FILE. You might want to ensure
 # the file is writable or has specific content as needed.
