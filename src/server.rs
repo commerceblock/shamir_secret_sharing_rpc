@@ -1,8 +1,5 @@
 use std::str::FromStr;
-use std::{env, fs};
-use std::fs::OpenOptions;
-use std::io::Write;
-use std::path::Path;
+use std::env;
 use std::sync::Arc;
 
 use bip39::Mnemonic;
@@ -12,18 +9,19 @@ use bitcoin::secp256k1::ffi::types::AlignedType;
 use bitcoin::NetworkKind;
 use blake2::Blake2bVar;
 use blake2::digest::{Update, VariableOutput};
-use hex::FromHex;
 use tokio::sync::Mutex;
 use tonic::{transport::Server, Request, Response, Status};
 
 use key_share::coordinator_server::{Coordinator, CoordinatorServer};
 use key_share::{AddMnemonicReply, AddMnemonicRequest, KeyListReply};
 
+use serde_json::{json, Value};
+
 
 const SHAMIR_SHARES: usize = 3;
 const SHAMIR_THRESHOLD: usize = 2;
 
-fn write_file_if_not_exists(path: &str, content: &str) -> bool {
+/* fn write_file_if_not_exists(path: &str, content: &str) -> bool {
     let path = Path::new(path);
 
     // Check if the file does not exist
@@ -44,7 +42,7 @@ fn write_file_if_not_exists(path: &str, content: &str) -> bool {
     }
 
     false
-}
+} */
 
 pub mod key_share {
     tonic::include_proto!("keyshare"); // The string specified here must match the proto package name
@@ -126,17 +124,28 @@ impl MyCoordinator {
 
             let seed_content =  hex::encode(secret_key.secret_bytes());
 
-            let seed_file = get_seed_file();
-
-            let written = write_file_if_not_exists(&seed_file, &seed_content);
-
             message += " and secret recovered.";
 
-            message.push_str(if written {
-                " Seed written to file."
-            } else {
-                " Seed file already exists."
-            });
+            let result = send_seed(&seed_content).await;
+
+            match result {
+                Ok(_) => {
+                    message += " Secret sent to server.";
+                },
+                Err(e) => {
+                    message += &format!(" Error sending secret to server: {}", e);
+                }
+            }
+
+            // let seed_file = get_seed_file();
+
+            // let written = write_file_if_not_exists(&seed_file, &seed_content);
+
+            // message.push_str(if written {
+            //     " Seed written to file."
+            // } else {
+            //     " Seed file already exists."
+            // });
         }
 
         Ok(message)
@@ -152,10 +161,10 @@ impl Coordinator for MyCoordinator {
         request: Request<AddMnemonicRequest>,
     ) -> Result<Response<AddMnemonicReply>, Status> {
 
-        if check_seed_file().unwrap() {
+        /* if check_seed_file().unwrap() {
             let message = "A valid seed file already exists. New keys will be ignored.".to_string();
             return Ok(Response::new(AddMnemonicReply { message }));
-        }
+        } */
 
         let request_inner = request.into_inner();
         let mnemonic_str = request_inner.mnemonic;
@@ -212,7 +221,7 @@ pub fn get_network_kind() -> bitcoin::network::NetworkKind {
     }
 }
 
-fn check_seed_file() -> Result<bool, Box<dyn std::error::Error>> {
+/* fn check_seed_file() -> Result<bool, Box<dyn std::error::Error>> {
     let seed_file = get_seed_file();
 
     // Check if the file exists
@@ -237,6 +246,25 @@ fn check_seed_file() -> Result<bool, Box<dyn std::error::Error>> {
     }
 
     Ok(true)
+} */
+
+async fn send_seed(seed: &str) -> Result<(), Box<dyn std::error::Error>> {
+
+    let client = reqwest::Client::new();
+
+    let response  = client
+        .post("http://localhost:5000/uploadsecret")
+        .json(&json!({ "secret": seed }))
+        .send()
+        .await?;
+
+    if response.status().is_success() {
+        let body: Value = response.json().await?;
+        println!("Server response: {:?}", body);
+        return Ok(());
+    } else {
+        return Err(format!("Request failed with status: {}", response.status()).into());
+    }
 }
 
 #[tokio::main]
