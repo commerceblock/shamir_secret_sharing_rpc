@@ -17,32 +17,8 @@ use key_share::{AddMnemonicReply, AddMnemonicRequest, KeyListReply};
 
 use serde_json::{json, Value};
 
-
 const SHAMIR_SHARES: usize = 3;
 const SHAMIR_THRESHOLD: usize = 2;
-
-/* fn write_file_if_not_exists(path: &str, content: &str) -> bool {
-    let path = Path::new(path);
-
-    // Check if the file does not exist
-    if !path.exists() {
-        // Open the file in write-only mode, create it if it does not exist.
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create_new(true) // This ensures the file is created only if it does not exist
-            .open(path).unwrap();
-
-        let content = content.trim_end_matches(|c| c == '\r' || c == '\n');
-
-
-        // Write the content to the file
-        file.write_all(content.as_bytes()).unwrap();
-
-        return true;
-    }
-
-    false
-} */
 
 pub mod key_share {
     tonic::include_proto!("keyshare"); // The string specified here must match the proto package name
@@ -136,16 +112,6 @@ impl MyCoordinator {
                     message += &format!(" Error sending secret to server: {}", e);
                 }
             }
-
-            // let seed_file = get_seed_file();
-
-            // let written = write_file_if_not_exists(&seed_file, &seed_content);
-
-            // message.push_str(if written {
-            //     " Seed written to file."
-            // } else {
-            //     " Seed file already exists."
-            // });
         }
 
         Ok(message)
@@ -160,11 +126,6 @@ impl Coordinator for MyCoordinator {
         &self,
         request: Request<AddMnemonicRequest>,
     ) -> Result<Response<AddMnemonicReply>, Status> {
-
-        /* if check_seed_file().unwrap() {
-            let message = "A valid seed file already exists. New keys will be ignored.".to_string();
-            return Ok(Response::new(AddMnemonicReply { message }));
-        } */
 
         let request_inner = request.into_inner();
         let mnemonic_str = request_inner.mnemonic;
@@ -204,12 +165,6 @@ impl Coordinator for MyCoordinator {
     }
 }
 
-fn get_seed_file() -> String {
-    let seed_path = env::var("SEED_PATH").unwrap_or_else(|_| "/home/vls/.lightning-signer/testnet".into());
-    let seed_file_name = env::var("SEED_FILE_NAME").unwrap_or_else(|_| "node.seed".into());
-    format!("{}/{}", seed_path, seed_file_name)
-}
-
 pub fn get_network_kind() -> bitcoin::network::NetworkKind {
     let network = env::var("NETWORK").unwrap_or_else(|_| "bitcoin".into());
     match network.as_str() {
@@ -220,33 +175,6 @@ pub fn get_network_kind() -> bitcoin::network::NetworkKind {
         _ => NetworkKind::Main, // Default case to handle unexpected values
     }
 }
-
-/* fn check_seed_file() -> Result<bool, Box<dyn std::error::Error>> {
-    let seed_file = get_seed_file();
-
-    // Check if the file exists
-    if !Path::new(&seed_file).exists() {
-        return Ok(false);
-    }
-
-    // Read the content of the file
-    let content = fs::read_to_string(&seed_file)?.trim().to_string();
-
-    // Attempt to decode the hex string into bytes
-    let is_valid_hex = match Vec::from_hex(&content) {
-        Ok(bytes) => bytes.len() == 32, // Check if the decoded byte array is exactly 32 bytes long
-        Err(_) => false, // If decoding fails, the hex string is not valid
-    };
-
-    if !is_valid_hex {
-        // If the file content is not a valid 32-byte hex string, delete the file
-        fs::remove_file(&seed_file)?;
-        println!("Invalid seed file deleted.");
-        return Ok(false);
-    }
-
-    Ok(true)
-} */
 
 async fn send_seed(seed: &str) -> Result<(), Box<dyn std::error::Error>> {
 
@@ -269,11 +197,6 @@ async fn send_seed(seed: &str) -> Result<(), Box<dyn std::error::Error>> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-
-    if check_seed_file().unwrap() {
-        println!("A valid seed file already exists. The server will not start.");
-        return Ok(());
-    }
 
     // let addr = "[::1]:50051".parse()?;
     let addr = "127.0.0.1:50051".parse()?;
